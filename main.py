@@ -1,5 +1,7 @@
 import argparse
 import os
+import dotenv
+from dotenv import load_dotenv
 import subprocess
 import sys
 import shutil
@@ -12,11 +14,12 @@ import numpy as np
 import sherpa_onnx
 
 
-ENCODER = "./models/sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/encoder-epoch-99-avg-1.int8.onnx"
-DECODER = "./models/sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/decoder-epoch-99-avg-1.int8.onnx"
-JOINER = "./models/sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/joiner-epoch-99-avg-1.int8.onnx" 
-TOKENS =  "./models/sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/tokens.txt"
-SILERO_VAD = "./models/silero_vad.onnx"
+load_dotenv()
+ENCODER = os.getenv('ENCODER')
+DECODER = os.getenv('DECODER')
+JOINER = os.getenv('JOINER')
+TOKENS = os.getenv('TOKENS')
+SILERO_VAD = os.getenv('SILERO_VAD')
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -70,7 +73,27 @@ def get_args():
         type=str,
         help="input video path",
     )
+    
+    parser.add_argument(
+        "--output-srt",
+        type=str,
+        default="",
+        help=("output srt path"),
+    )
+    
+    parser.add_argument(
+        "--sample-rate",
+        type=int,
+        default=16000,
+        help="sample rate",
+    )
 
+    parser.add_argument(
+        "--num-threads",
+        type=int,
+        default=1,
+        help="number of threads",
+    )
     return parser.parse_args()
 
 
@@ -154,7 +177,7 @@ def main():
 
     vad = sherpa_onnx.VoiceActivityDetector(vad_config, buffer_size_in_seconds=300)
 
-    print(f"Opening {args.input_file} with FFmpeg...")
+    print(f"opening {args.input_file} with ffmpeg...")
     ffmpeg_cmd = [
         "ffmpeg",
         "-i",
@@ -181,7 +204,6 @@ def main():
     frames_per_read = args.sample_rate * 10
     
     start_time = dt.datetime.now()
-    print("Starting transcription stream...")
     num_processed_samples = 0
     is_eof = False
     
